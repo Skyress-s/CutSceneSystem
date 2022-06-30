@@ -67,7 +67,7 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
 	float StartSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetLowerBoundValue() / TickResolution;
 	UE_LOG(LogTemp, Warning, TEXT("End time : %f  . Start time : %f"), EndSeconds, StartSeconds);
 
-	float blendTime = 1.1f;
+	float blendTime = 2.0f;
 	FTimerHandle handle;
 	FTimerDelegate TimerDelegate;
 	TimerDelegate.BindLambda([&]()
@@ -79,7 +79,7 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
 
 void ASomethingSomethingCutscene::ViewTargetToPlayer(float blendTime) {
 	
-    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0), 2.f);
+    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0), blendTime);
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
     	controller->SetInputMode(FInputModeGameOnly());
 }
