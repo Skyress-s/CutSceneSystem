@@ -39,7 +39,14 @@ public:
 	FCutSceneEnd CutSceneEnd;
 
 	UFUNCTION()
-	void ViewTargetToPlayer(float blendTime);
+	void ViewTargetToPlayer();
+
+private:
+	UPROPERTY()
+	bool bHoldSkip = false;
+
+	UPROPERTY(meta = (AllowPrivateAccess = "true"), EditAnywhere);
+		float blendTime = 1.2f;
 };
 
 

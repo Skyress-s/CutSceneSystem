@@ -34,12 +34,33 @@ void ASomethingSomethingCutscene::BeginPlay()
 void ASomethingSomethingCutscene::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
+
+	if (bHoldSkip) {
+		UE_LOG(LogTemp, Warning, TEXT("Holding input!"))
+	}
 }
 
 void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResul) {
+	
+	APlayerController* controller = GetWorld()->GetFirstPlayerController();
+	// //binds input so we can skip
+    FInputActionBinding pressed("SkipCutscene", IE_Pressed);
+    pressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
+    {
+    	bHoldSkip = true;
+    });
+    controller->GetPawn()->InputComponent->AddActionBinding(pressed);
+    
+    FInputActionBinding release("SkipCutscene", IE_Released);
+    release.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
+    {
+    	bHoldSkip = false;
+    });
+    controller->GetPawn()->InputComponent->AddActionBinding(release);
 
+	//other stuff
 	FMovieSceneSequencePlaybackSettings settings = FMovieSceneSequencePlaybackSettings();
     ALevelSequenceActor* actor;
     ULevelSequencePlayer* player = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), LevelSequenceOne, settings , actor);
@@ -49,12 +70,8 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
     UActorComponent* CameraComponent = nullptr;
     
     CameraComponent = player->GetActiveCameraComponent(); 
-    if (CameraComponent != nullptr) {
-    	UE_LOG(LogTemp, Warning, TEXT("YEEE BABY!"));
-    }
-
-	APlayerController* controller = GetWorld()->GetFirstPlayerController();
 	controller->SetInputMode(FInputModeUIOnly());
+	controller->SetInputMode(FInputModeUIOnly().SetWidgetToFocus())
 	controller->FlushPressedKeys();
 	
 
@@ -67,18 +84,21 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
 	float StartSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetLowerBoundValue() / TickResolution;
 	UE_LOG(LogTemp, Warning, TEXT("End time : %f  . Start time : %f"), EndSeconds, StartSeconds);
 
-	float blendTime = 2.0f;
 	FTimerHandle handle;
 	FTimerDelegate TimerDelegate;
 	TimerDelegate.BindLambda([&]()
                              	{
-                             		ViewTargetToPlayer(blendTime);
+                             		ViewTargetToPlayer();
                              	});
 	GetWorld()->GetTimerManager().SetTimer(handle, TimerDelegate, EndSeconds - blendTime, false);
+
+
+	
 }
 
-void ASomethingSomethingCutscene::ViewTargetToPlayer(float blendTime) {
-	
+void ASomethingSomethingCutscene::ViewTargetToPlayer() {
+
+	UE_LOG(LogTemp, Warning, TEXT("blend time%f"), blendTime)
     GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0), blendTime);
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
     	controller->SetInputMode(FInputModeGameOnly());
