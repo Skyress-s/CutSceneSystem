@@ -3,8 +3,10 @@
 
 #include "SomethingSomethingCutscene.h"
 
+#include "CutsceneSkipWidget.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
@@ -43,14 +45,25 @@ void ASomethingSomethingCutscene::Tick(float DeltaTime)
 
 void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResul) {
+
+	//events
+	CutSceneStart.Broadcast();
 	
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
+
+	// controller->SetInputMode(FInputModeUIOnly());
+	controller->GetCharacter()->GetMesh()->GetAnimInstance()->PlaySlotAnimation(cutSceneAnimation, "DefaultSlot");
+	originalPawn = controller->GetPawn();
+	controller->Possess(this);
+	controller->FlushPressedKeys();
+	
 	// //binds input so we can skip
     FInputActionBinding pressed("SkipCutscene", IE_Pressed);
     pressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
     {
     	bHoldSkip = true;
     });
+	
     controller->GetPawn()->InputComponent->AddActionBinding(pressed);
     
     FInputActionBinding release("SkipCutscene", IE_Released);
@@ -60,31 +73,35 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
     });
     controller->GetPawn()->InputComponent->AddActionBinding(release);
 
+	//creates the widget
+	if (widgetToSpawnClass) {
+		cutsceneSkipWidget = CreateWidget<UCutsceneSkipWidget>(GetWorld(), widgetToSpawnClass);
+
+		cutsceneSkipWidget->AddToViewport();
+	}
+
+	
 	//other stuff
 	FMovieSceneSequencePlaybackSettings settings = FMovieSceneSequencePlaybackSettings();
     ALevelSequenceActor* actor;
-    ULevelSequencePlayer* player = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), LevelSequenceOne, settings , actor);
-    player->Play();
-    player->SetDisableCameraCuts(true);
-    UE_LOG(LogTemp, Warning, TEXT("Wahooo"))
-    UActorComponent* CameraComponent = nullptr;
+    ULevelSequencePlayer* levelSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), LevelSequenceOne, settings , actor);
+    levelSequencePlayer->Play();
+    levelSequencePlayer->SetDisableCameraCuts(true);
+	CutsceneCamera = nullptr;
     
-    CameraComponent = player->GetActiveCameraComponent(); 
-	controller->SetInputMode(FInputModeUIOnly());
-	controller->SetInputMode(FInputModeUIOnly().SetWidgetToFocus())
-	controller->FlushPressedKeys();
+    CutsceneCamera = levelSequencePlayer->GetActiveCameraComponent(); 
+	
 	
 
-    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0), 0.f);
-    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(CameraComponent->GetOwner(), 2.f);
+    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(originalPawn, 0.f);
+    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(CutsceneCamera->GetOwner(), 2.f);
 
 	//gets the time
 	FFrameRate TickResolution = LevelSequenceOne->MovieScene->GetTickResolution();
 	float EndSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetUpperBoundValue() / TickResolution;
 	float StartSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetLowerBoundValue() / TickResolution;
 	UE_LOG(LogTemp, Warning, TEXT("End time : %f  . Start time : %f"), EndSeconds, StartSeconds);
-
-	FTimerHandle handle;
+FTimerHandle handle;
 	FTimerDelegate TimerDelegate;
 	TimerDelegate.BindLambda([&]()
                              	{
@@ -98,8 +115,14 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
 
 void ASomethingSomethingCutscene::ViewTargetToPlayer() {
 
-	UE_LOG(LogTemp, Warning, TEXT("blend time%f"), blendTime)
-    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0), blendTime);
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
-    	controller->SetInputMode(FInputModeGameOnly());
+	controller->Possess(originalPawn);
+	UE_LOG(LogTemp, Warning, TEXT("blend time%f"), blendTime)
+    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(CutsceneCamera->GetOwner(), 0.f);
+    GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(originalPawn, blendTime);
+
+	controller->InputComponent->RemoveActionBinding(FName("SkipCutscene"), IE_Pressed);
+	controller->InputComponent->RemoveActionBinding(FName("SkipCutscene"), IE_Released);
+	//events
+	CutSceneEnd.Broadcast();
 }

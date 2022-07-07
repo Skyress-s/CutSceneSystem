@@ -19,5 +19,7 @@ public:
 
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
+	UPROPERTY(meta=(BindWidget))
+	class UProgressBar* ProgressBar = nullptr;
 	
 };

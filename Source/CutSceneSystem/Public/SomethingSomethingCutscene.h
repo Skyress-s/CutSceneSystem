@@ -6,10 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "SomethingSomethingCutscene.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCutSceneStart);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCutSceneEnd);
-
 UCLASS()
-class CUTSCENESYSTEM_API ASomethingSomethingCutscene : public AActor
+class CUTSCENESYSTEM_API ASomethingSomethingCutscene : public APawn
 {
 	GENERATED_BODY()
 	
@@ -30,23 +30,38 @@ public:
 	class ULevelSequence* LevelSequenceOne = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	class UBoxComponent* TriggerVolume = nullptr;
-
+	class UBoxComponent* TriggerVolume = nullptr; 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget> widgetToSpawnClass = nullptr;
+	UPROPERTY(EditAnywhere)
+	class UCutsceneSkipWidget* cutsceneSkipWidget = nullptr;
+	
 	UFUNCTION()
 	void OnOverLap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResul);
 
 	UPROPERTY(BlueprintAssignable)
 	FCutSceneEnd CutSceneEnd;
 
+	UPROPERTY(BlueprintAssignable)
+	FCutSceneStart CutSceneStart;
+
 	UFUNCTION()
 	void ViewTargetToPlayer();
 
+	UPROPERTY( EditAnywhere)
+	UAnimSequenceBase* cutSceneAnimation = nullptr;
 private:
 	UPROPERTY()
 	bool bHoldSkip = false;
 
-	UPROPERTY(meta = (AllowPrivateAccess = "true"), EditAnywhere);
+	UPROPERTY(meta = (AllowPrivateAccess = "true"), EditAnywhere)
 		float blendTime = 1.2f;
+
+	UPROPERTY()
+	APawn* originalPawn = nullptr;
+
+	UPROPERTY()
+	UActorComponent* CutsceneCamera = nullptr;
 };
 
 
