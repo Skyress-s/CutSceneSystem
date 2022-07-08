@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/ProgressBar.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerInput.h"
 #include "Kismet/GameplayStatics.h"
@@ -37,18 +38,35 @@ void ASomethingSomethingCutscene::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (!bActive)
+		return;
 
+	
 	if (bHoldSkip) {
-		UE_LOG(LogTemp, Warning, TEXT("Holding input!"))
+		holdSkipTime += UGameplayStatics::GetWorldDeltaSeconds(GetWorld());
+	}
+	else {
+		holdSkipTime = 0.f;
+	}
+
+	float percent = holdSkipTime/holdSkipDuration;
+	cutsceneSkipWidget->ProgressBar->SetPercent(percent);
+	if (percent > 1.f && GetWorld()->GetTimerManager().TimerExists(CutSceneEndTimerHandle)) {
+		GetWorld()->GetTimerManager().ClearTimer(CutSceneEndTimerHandle);
+		ViewTargetToPlayer(skipBlendOutTime);
 	}
 }
 
 void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResul) {
+	
+	//handling flags
+	bActive = true;
 
+	
 	//events
 	CutSceneStart.Broadcast();
-	
+
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
 
 	// controller->SetInputMode(FInputModeUIOnly());
@@ -101,28 +119,38 @@ void ASomethingSomethingCutscene::OnOverLap(UPrimitiveComponent* OverlappedCompo
 	float EndSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetUpperBoundValue() / TickResolution;
 	float StartSeconds = LevelSequenceOne->MovieScene->GetPlaybackRange().GetLowerBoundValue() / TickResolution;
 	UE_LOG(LogTemp, Warning, TEXT("End time : %f  . Start time : %f"), EndSeconds, StartSeconds);
-FTimerHandle handle;
 	FTimerDelegate TimerDelegate;
 	TimerDelegate.BindLambda([&]()
                              	{
-                             		ViewTargetToPlayer();
+                             		ViewTargetToPlayer(blendOutTime);
                              	});
-	GetWorld()->GetTimerManager().SetTimer(handle, TimerDelegate, EndSeconds - blendTime, false);
+	GetWorld()->GetTimerManager().SetTimer(CutSceneEndTimerHandle, TimerDelegate, EndSeconds - blendOutTime, false);
 
 
 	
 }
 
-void ASomethingSomethingCutscene::ViewTargetToPlayer() {
-
+void ASomethingSomethingCutscene::ViewTargetToPlayer(float blendTime) {
+	//handling flags
+	bActive = false;
+	bHoldSkip = false;
+	
+	//resets variables
+	holdSkipTime = 0.f;
+	
+	
 	APlayerController* controller = GetWorld()->GetFirstPlayerController();
 	controller->Possess(originalPawn);
-	UE_LOG(LogTemp, Warning, TEXT("blend time%f"), blendTime)
     GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(CutsceneCamera->GetOwner(), 0.f);
     GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(originalPawn, blendTime);
 
+	//unsubscribe
 	controller->InputComponent->RemoveActionBinding(FName("SkipCutscene"), IE_Pressed);
 	controller->InputComponent->RemoveActionBinding(FName("SkipCutscene"), IE_Released);
+
+	//delete widget
+	cutsceneSkipWidget->RemoveFromViewport();
+	
 	//events
 	CutSceneEnd.Broadcast();
 }

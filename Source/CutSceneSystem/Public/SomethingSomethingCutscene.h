@@ -26,42 +26,70 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	//my deseg
 	//------------------------------------------------
-	UPROPERTY(EditAnywhere)
-	class ULevelSequence* LevelSequenceOne = nullptr;
 
+	//componennts
 	UPROPERTY(EditAnywhere)
-	class UBoxComponent* TriggerVolume = nullptr; 
-	UPROPERTY(EditAnywhere)
-	TSubclassOf<class UUserWidget> widgetToSpawnClass = nullptr;
-	UPROPERTY(EditAnywhere)
-	class UCutsceneSkipWidget* cutsceneSkipWidget = nullptr;
+	class UBoxComponent* TriggerVolume = nullptr;
 	
+	//funcs
 	UFUNCTION()
 	void OnOverLap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResul);
+	UFUNCTION()
+	void ViewTargetToPlayer(float blendTime);
 
+	//events
 	UPROPERTY(BlueprintAssignable)
 	FCutSceneEnd CutSceneEnd;
 
 	UPROPERTY(BlueprintAssignable)
 	FCutSceneStart CutSceneStart;
 
-	UFUNCTION()
-	void ViewTargetToPlayer();
 
-	UPROPERTY( EditAnywhere)
+	//variables
+	UPROPERTY( EditAnywhere, Category = "Cutscene|assets")
 	UAnimSequenceBase* cutSceneAnimation = nullptr;
+	
+	UPROPERTY(EditAnywhere, Category = "Cutscene|assets")
+	class ULevelSequence* LevelSequenceOne = nullptr;
+	
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget> widgetToSpawnClass = nullptr;
 private:
+	//flags
+	UPROPERTY()
+	bool bActive = false;
 	UPROPERTY()
 	bool bHoldSkip = false;
+	UPROPERTY()
 
-	UPROPERTY(meta = (AllowPrivateAccess = "true"), EditAnywhere)
-		float blendTime = 1.2f;
+	//private varibles
+	float holdSkipTime = 0.f;
 
+	//eidtor visible
+	UPROPERTY(meta =(AllowPrivateAccess = "true"), EditAnywhere, Category = "Cutscene|config")
+	float holdSkipDuration = 1.5f;
+	
+	UPROPERTY(meta =(AllowPrivateAccess = "true"), EditAnywhere, Category = "Cutscene|config")
+		float blendInTime = 1.2f;
+	
+	UPROPERTY(meta =(AllowPrivateAccess = "true"), EditAnywhere, Category = "Cutscene|config")
+		float blendOutTime = 1.2f;
+
+	UPROPERTY(meta =(AllowPrivateAccess = "true"), EditAnywhere, Category = "Cutscene|config")
+	float skipBlendOutTime = 0.4f;
+	
+	//timer handles
+	FTimerHandle CutSceneEndTimerHandle;
+
+	//private objects
 	UPROPERTY()
 	APawn* originalPawn = nullptr;
-
+	
 	UPROPERTY()
 	UActorComponent* CutsceneCamera = nullptr;
+	
+	UPROPERTY(EditAnywhere)
+	class UCutsceneSkipWidget* cutsceneSkipWidget = nullptr;
 };
 
 
